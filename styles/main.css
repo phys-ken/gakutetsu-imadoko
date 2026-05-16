@@ -1265,33 +1265,35 @@ button:disabled {
 
   /* peek: compact — map stays visible above */
   .side-panel[data-empty="false"][data-sheet="peek"] {
-    max-height: 45dvh;
+    max-height: 36dvh;
     overflow: hidden;
   }
 
   /* full: expanded — nearly full height */
   .side-panel[data-empty="false"][data-sheet="full"] {
-    max-height: 74dvh;
+    max-height: 82dvh;
     overflow-y: auto;
   }
 
-  /* Sheet handle (replaces ::before) */
+  /* Sheet handle */
   .sheet-handle-bar {
     display: block;
     flex-shrink: 0;
-    padding: 10px 0 8px;
+    padding: 14px 0 12px;
     touch-action: none;
     cursor: ns-resize;
     text-align: center;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .sheet-handle-bar::before {
     content: "";
     display: inline-block;
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(28, 54, 80, 0.2);
+    width: 48px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(28, 54, 80, 0.28);
   }
 
   /* Empty state has no content — keep sheet hidden */

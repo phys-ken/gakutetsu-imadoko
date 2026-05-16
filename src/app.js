@@ -780,38 +780,34 @@
     var handle = elements.sheetHandleBar;
     if (!handle) { return; }
 
-    var sheetDrag = null;
+    var touchStartY = null;
+    var pendingTouch = false;
 
-    handle.addEventListener("pointerdown", function (e) {
-      e.preventDefault();
-      sheetDrag = { pointerId: e.pointerId, startY: e.clientY };
-      handle.setPointerCapture(e.pointerId);
-    });
+    handle.addEventListener("touchstart", function (e) {
+      touchStartY = e.touches[0].clientY;
+      pendingTouch = true;
+    }, { passive: true });
 
-    handle.addEventListener("pointermove", function (e) {
-      if (!sheetDrag || e.pointerId !== sheetDrag.pointerId) { return; }
-      e.preventDefault();
-    });
+    handle.addEventListener("touchend", function (e) {
+      if (touchStartY === null) { return; }
+      var dy = e.changedTouches[0].clientY - touchStartY;
+      touchStartY = null;
+      if (dy > 25) { setSheetState("peek"); }
+      else if (dy < -25) { setSheetState("full"); }
+      else { setSheetState(state.sheetState === "full" ? "peek" : "full"); }
+    }, { passive: true });
 
-    handle.addEventListener("pointerup", function (e) {
-      if (!sheetDrag || e.pointerId !== sheetDrag.pointerId) { return; }
-      var dy = e.clientY - sheetDrag.startY;
-      sheetDrag = null;
+    handle.addEventListener("touchcancel", function () {
+      touchStartY = null;
+      pendingTouch = false;
+    }, { passive: true });
 
-      if (Math.abs(dy) < 12) {
-        setSheetState(state.sheetState === "full" ? "peek" : "full");
+    handle.addEventListener("click", function () {
+      if (pendingTouch) {
+        pendingTouch = false;
         return;
       }
-
-      if (dy > 50 && state.sheetState === "full") {
-        setSheetState("peek");
-      } else if (dy < -50 && state.sheetState === "peek") {
-        setSheetState("full");
-      }
-    });
-
-    handle.addEventListener("pointercancel", function () {
-      sheetDrag = null;
+      setSheetState(state.sheetState === "full" ? "peek" : "full");
     });
 
     handle.addEventListener("keydown", function (e) {
