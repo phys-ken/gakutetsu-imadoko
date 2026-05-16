@@ -458,6 +458,10 @@ button:disabled {
   white-space: nowrap;
 }
 
+.tt-item.passed {
+  opacity: 0.38;
+}
+
 .tt-empty {
   font-size: 0.85rem;
   color: var(--sub);

@@ -465,16 +465,17 @@
 
   function renderTimetableItems(items) {
     if (!items || items.length === 0) {
-      return '<li class="tt-empty">これ以上の通過予定はありません</li>';
+      return '<li class="tt-empty">本日の通過はありません</li>';
     }
 
     return items.map(function (item) {
+      var passed = item.seconds < state.nowSeconds;
       var timeText = schedule.secondsToTimeText(item.seconds, item.approximate);
       var relText = schedule.formatRelativeFromNow(state.nowSeconds, item.seconds);
       var dirLabel = item.direction === "inbound" ? "上り" : "下り";
       var dirClass = item.direction;
       return '' +
-        '<li class="tt-item">' +
+        '<li class="tt-item' + (passed ? ' passed' : '') + '">' +
           '<span class="tt-time">' + timeText + '</span>' +
           '<span class="tt-badge ' + dirClass + '">' + dirLabel + '</span>' +
           '<span class="tt-rel">' + relText + '</span>' +
@@ -519,6 +520,7 @@
     }).sort(function (a, b) { return a.seconds - b.seconds; });
 
     var allFuture = futureEvents.slice().sort(function (a, b) { return a.seconds - b.seconds; });
+    var allEvents = events.slice().sort(function (a, b) { return a.seconds - b.seconds; });
 
     elements.sidePanel.dataset.empty = "false";
     elements.selectionKind.textContent = metadata.kind;
@@ -536,7 +538,7 @@
 
     if (state.showSidePanelAll) {
       elements.sideAllSection.hidden = false;
-      elements.sideAllList.innerHTML = renderTimetableItems(allFuture);
+      elements.sideAllList.innerHTML = renderTimetableItems(allEvents);
     } else {
       elements.sideAllSection.hidden = true;
       elements.sideAllList.innerHTML = "";
@@ -547,7 +549,7 @@
 
     if (state.showAllPassages) {
       elements.allPassagesSection.hidden = false;
-      elements.allPassagesList.innerHTML = renderTimetableItems(allFuture);
+      elements.allPassagesList.innerHTML = renderTimetableItems(allEvents);
     } else {
       elements.allPassagesSection.hidden = true;
       elements.allPassagesList.innerHTML = "";
