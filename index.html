@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>がくてつ いまどこ？</title>
+  <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <div class="app-title">がくてつ<br>いまどこ？</div>
+      <div class="segmented" role="radiogroup" aria-label="ダイヤ選択">
+        <label>
+          <input type="radio" name="scheduleType" value="weekday">
+          <span>平日</span>
+        </label>
+        <label>
+          <input type="radio" name="scheduleType" value="holiday">
+          <span>土休日</span>
+        </label>
+      </div>
+
+      <div class="status-row">
+        <span class="pill">上り <strong id="runningInboundCount">0</strong> 本</span>
+        <span class="pill">下り <strong id="runningOutboundCount">0</strong> 本</span>
+      </div>
+
+      <div class="time-compact">
+        <span class="time-value" id="clockValue">--:--:--</span>
+        <span class="date-compact" id="dateValue">----</span>
+      </div>
+
+      <button id="menuToggle" class="menu-toggle secondary" type="button" aria-controls="appDrawer" aria-expanded="false">
+        <span class="menu-toggle-icon" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+        <span>メニュー</span>
+      </button>
+    </header>
+
+    <div class="content-area">
+      <div class="map-frame">
+        <div class="map-shell" id="mapShell">
+          <svg id="routeMap" viewBox="0 0 1280 720" aria-labelledby="mapTitle mapDesc" role="img">
+            <title id="mapTitle">岳南電車 路線図</title>
+            <desc id="mapDesc">吉原から岳南江尾までの路線、主要踏切、駅、現在の列車位置を表示します。</desc>
+          </svg>
+
+          <div id="dragPickerDock" class="drag-picker-dock">
+            <button id="dragPicker" class="drag-picker" type="button" aria-label="ひと型をドラッグして場所を選ぶ">
+              <span class="drag-picker-person" aria-hidden="true">
+                <span class="drag-picker-head"></span>
+                <span class="drag-picker-body"></span>
+              </span>
+            </button>
+            <span class="drag-picker-copy" aria-hidden="true">ここをドラッグ</span>
+          </div>
+        </div>
+
+      </div>
+
+      <aside class="side-panel" id="sidePanel" data-empty="true">
+        <div class="side-empty">
+          <p>地図を押すと<br>通過情報が出ます</p>
+        </div>
+        <div class="side-content">
+          <header class="side-header">
+            <span class="selection-kind" id="selectionKind"></span>
+            <div class="selection-name" id="selectionName"></div>
+            <div class="selection-km" id="selectionKm"></div>
+          </header>
+
+          <div class="side-next" id="sideNextSection">
+            <div class="side-dir">
+              <div class="side-dir-label"><span class="mini inbound"></span>上り　次の1本</div>
+              <ul class="schedule-list" id="nearInboundList"></ul>
+            </div>
+            <div class="side-dir">
+              <div class="side-dir-label"><span class="mini outbound"></span>下り　次の1本</div>
+              <ul class="schedule-list" id="nearOutboundList"></ul>
+            </div>
+          </div>
+
+          <div class="side-all" id="sideAllSection" hidden>
+            <div class="side-dir-label">今日の全通過時刻</div>
+            <ul class="tt-list" id="sideAllList"></ul>
+          </div>
+
+          <div class="side-footer">
+            <button id="toggleSidePanelAll" class="secondary compact-button" type="button">全時刻を見る</button>
+            <button id="resetSelectionButton" class="secondary compact-button" type="button">えらびなおす</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <aside class="app-drawer" id="appDrawer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="一覧と詳細" hidden>
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-kicker">メニュー</div>
+        <h2>一覧と詳細</h2>
+      </div>
+      <button id="drawerCloseButton" class="secondary compact-button" type="button">閉じる</button>
+    </div>
+
+    <div class="drawer-body">
+      <section class="drawer-section">
+        <div class="drawer-app-info">
+          <span class="eyebrow">おさんぽれっしゃマップ</span>
+          <h2>がくてつ いまどこ？</h2>
+          <p>地図のどこかを押すと、その場所を通る電車の時刻を表示します。</p>
+        </div>
+        <div class="status-row">
+          <span class="pill">自動判定 <strong id="autoModeLabel">平日</strong></span>
+          <span class="pill">表示中 <strong id="activeModeLabel">平日</strong></span>
+        </div>
+      </section>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head">
+          <h3>選んだ場所</h3>
+          <button id="toggleAllButton" class="secondary compact-button" type="button" disabled>全時刻を見る</button>
+        </div>
+
+        <div class="drawer-location-info">
+          <span class="drawer-info-item"><span class="drawer-info-label">最寄り駅</span><span id="nearestStation">—</span></span>
+          <span class="drawer-info-item"><span class="drawer-info-label">最寄り踏切</span><span id="nearestCrossing">—</span></span>
+        </div>
+
+        <div id="selectionDetailSummary" style="display:none"></div>
+        <div id="selectionModeSummary" style="display:none"></div>
+
+        <div class="all-passages" id="allPassagesSection" hidden>
+          <ul class="tt-list" id="allPassagesList"></ul>
+        </div>
+      </section>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head">
+          <h3>駅一覧</h3>
+        </div>
+        <div class="location-list" id="stationList"></div>
+      </section>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head">
+          <h3>踏切一覧</h3>
+        </div>
+        <div class="location-list" id="crossingList"></div>
+      </section>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head">
+          <h3>地図の見かた</h3>
+        </div>
+        <div class="drawer-note">
+          青い矢印が上り（岳南江尾→吉原）、オレンジが下り（吉原→岳南江尾）です。黄色のマークが踏切、緑のマーカーが選択した地点です。通過時刻は駅間を等速として計算しています。
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <script defer src="./src/data.js"></script>
+  <script defer src="./src/geometry.js"></script>
+  <script defer src="./src/schedule.js"></script>
+  <script defer src="./src/app.js"></script>
+</body>
+</html>
