@@ -13,7 +13,6 @@
     selectedScheduleType: "weekday",
     selectedPoint: null,
     dragPreview: null,
-    showAllPassages: false,
     showSidePanelAll: false,
     liveTrains: [],
     now: new Date(),
@@ -50,13 +49,6 @@
     sideAllList: document.getElementById("sideAllList"),
     toggleSidePanelAll: document.getElementById("toggleSidePanelAll"),
     resetSelectionButton: document.getElementById("resetSelectionButton"),
-    nearestStation: document.getElementById("nearestStation"),
-    nearestCrossing: document.getElementById("nearestCrossing"),
-    selectionDetailSummary: document.getElementById("selectionDetailSummary"),
-    selectionModeSummary: document.getElementById("selectionModeSummary"),
-    toggleAllButton: document.getElementById("toggleAllButton"),
-    allPassagesSection: document.getElementById("allPassagesSection"),
-    allPassagesList: document.getElementById("allPassagesList"),
     stationList: document.getElementById("stationList"),
     crossingList: document.getElementById("crossingList"),
     kmAdjuster: document.getElementById("kmAdjuster"),
@@ -170,7 +162,6 @@
       metadata: metadata
     };
     state.dragPreview = null;
-    state.showAllPassages = false;
     setSheetState("peek");
     try { localStorage.setItem(LS_KEY_KM, projected.km.toFixed(4)); } catch (e) {}
     renderMap();
@@ -495,19 +486,11 @@
     if (!state.selectedPoint) {
       elements.sidePanel.dataset.empty = "true";
       elements.sidePanel.dataset.sheet = "peek";
-      elements.nearestStation.textContent = "-";
-      elements.nearestCrossing.textContent = "-";
-      elements.selectionDetailSummary.textContent = "えらんだ場所の説明がここに出ます。";
-      elements.selectionModeSummary.textContent = "近い列車だけ表示";
       elements.nearInboundList.innerHTML = renderScheduleItems([], "場所を選ぶと表示されます");
       elements.nearOutboundList.innerHTML = renderScheduleItems([], "場所を選ぶと表示されます");
       elements.sideAllSection.hidden = true;
       elements.sideAllList.innerHTML = "";
       elements.toggleSidePanelAll.textContent = "全時刻を見る";
-      elements.allPassagesSection.hidden = true;
-      elements.allPassagesList.innerHTML = "";
-      elements.toggleAllButton.disabled = true;
-      elements.toggleAllButton.textContent = "今日のぜんぶを見る";
       elements.kmAdjuster.hidden = true;
       syncLocationButtons();
       return;
@@ -528,17 +511,12 @@
       return e.direction === "outbound";
     }).sort(function (a, b) { return a.seconds - b.seconds; });
 
-    var allFuture = futureEvents.slice().sort(function (a, b) { return a.seconds - b.seconds; });
     var allEvents = events.slice().sort(function (a, b) { return a.seconds - b.seconds; });
 
     elements.sidePanel.dataset.empty = "false";
     elements.selectionKind.textContent = metadata.kind;
     elements.selectionName.textContent = metadata.name;
     elements.selectionKm.textContent = state.selectedPoint.km.toFixed(2) + " km";
-    elements.nearestStation.textContent = metadata.station ? metadata.station.name : "-";
-    elements.nearestCrossing.textContent = metadata.crossing ? metadata.crossing.name : "-";
-    elements.selectionDetailSummary.textContent = metadata.note;
-    elements.selectionModeSummary.textContent = state.showSidePanelAll ? "全時刻表示中" : "近い列車だけ表示";
 
     elements.nearInboundList.innerHTML = renderScheduleItems(futureInbound.slice(0, 1), "本日の上りはありません");
     elements.nearOutboundList.innerHTML = renderScheduleItems(futureOutbound.slice(0, 1), "本日の下りはありません");
@@ -551,17 +529,6 @@
     } else {
       elements.sideAllSection.hidden = true;
       elements.sideAllList.innerHTML = "";
-    }
-
-    elements.toggleAllButton.disabled = false;
-    elements.toggleAllButton.textContent = state.showAllPassages ? "近い列車だけに戻す" : "今日のぜんぶを見る";
-
-    if (state.showAllPassages) {
-      elements.allPassagesSection.hidden = false;
-      elements.allPassagesList.innerHTML = renderTimetableItems(allEvents);
-    } else {
-      elements.allPassagesSection.hidden = true;
-      elements.allPassagesList.innerHTML = "";
     }
 
     elements.kmAdjuster.hidden = false;
@@ -732,7 +699,6 @@
     elements.resetSelectionButton.addEventListener("click", function () {
       state.selectedPoint = null;
       state.dragPreview = null;
-      state.showAllPassages = false;
       state.showSidePanelAll = false;
       try { localStorage.removeItem(LS_KEY_KM); } catch (e) {}
       renderMap();
@@ -747,13 +713,6 @@
       updateSelectionPanel();
     });
 
-    elements.toggleAllButton.addEventListener("click", function () {
-      if (!state.selectedPoint) {
-        return;
-      }
-      state.showAllPassages = !state.showAllPassages;
-      updateSelectionPanel();
-    });
   }
 
   function initializeDrawer() {
