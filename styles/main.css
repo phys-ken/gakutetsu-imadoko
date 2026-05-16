@@ -1104,6 +1104,11 @@ button:disabled {
   white-space: pre-line;
 }
 
+/* ─── Bottom sheet handle (visible only on mobile) ─── */
+.sheet-handle-bar {
+  display: none;
+}
+
 /* ─── GitHub link in drawer ─── */
 .drawer-github-link {
   display: inline-flex;
@@ -1234,45 +1239,59 @@ button:disabled {
 
   /* ── Side panel → bottom sheet ── */
   .side-panel {
-    /* take out of grid flow */
     position: fixed;
     inset: auto 0 0 0;
     z-index: 10;
-    /* sizing */
-    max-height: 72vh;
-    /* shape */
     border-radius: 22px 22px 0 0;
     border-bottom: none;
     border-left: none;
     border-right: none;
     box-shadow: 0 -6px 28px rgba(24, 50, 76, 0.16);
-    /* slide-up animation */
     transform: translateY(100%);
-    transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
-    /* layout */
+    transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1),
+                max-height 280ms cubic-bezier(0.32, 0.72, 0, 1);
     display: flex;
     flex-direction: column;
     padding: 0 16px;
     padding-bottom: max(20px, env(safe-area-inset-bottom));
-    overflow-y: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
-  }
-
-  /* Drag handle pill at top of sheet */
-  .side-panel::before {
-    content: "";
-    display: block;
-    flex-shrink: 0;
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(28, 54, 80, 0.2);
-    margin: 10px auto 6px;
   }
 
   /* Slide in when a point is selected */
   .side-panel[data-empty="false"] {
     transform: translateY(0);
+  }
+
+  /* peek: compact — map stays visible above */
+  .side-panel[data-empty="false"][data-sheet="peek"] {
+    max-height: 45dvh;
+    overflow: hidden;
+  }
+
+  /* full: expanded — nearly full height */
+  .side-panel[data-empty="false"][data-sheet="full"] {
+    max-height: 74dvh;
+    overflow-y: auto;
+  }
+
+  /* Sheet handle (replaces ::before) */
+  .sheet-handle-bar {
+    display: block;
+    flex-shrink: 0;
+    padding: 10px 0 8px;
+    touch-action: none;
+    cursor: ns-resize;
+    text-align: center;
+  }
+
+  .sheet-handle-bar::before {
+    content: "";
+    display: inline-block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(28, 54, 80, 0.2);
   }
 
   /* Empty state has no content — keep sheet hidden */

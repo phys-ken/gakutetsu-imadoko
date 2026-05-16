@@ -18,7 +18,8 @@
     liveTrains: [],
     now: new Date(),
     nowSeconds: 0,
-    drawerOpen: false
+    drawerOpen: false,
+    sheetState: "peek"
   };
 
   var pickerDrag = null;
@@ -62,7 +63,8 @@
     kmInput: document.getElementById("kmInput"),
     kmMinus: document.getElementById("kmMinus"),
     kmPlus: document.getElementById("kmPlus"),
-    kmAdjContext: document.getElementById("kmAdjContext")
+    kmAdjContext: document.getElementById("kmAdjContext"),
+    sheetHandleBar: document.getElementById("sheetHandleBar")
   };
 
   var scheduleInputs = Array.from(document.querySelectorAll("input[name='scheduleType']"));
@@ -154,6 +156,11 @@
     });
   }
 
+  function setSheetState(nextState) {
+    state.sheetState = nextState;
+    elements.sidePanel.dataset.sheet = nextState;
+  }
+
   function applyProjectedSelection(projected) {
     var metadata = resolveSelectionMetadata(projected.km);
     state.selectedPoint = {
@@ -164,6 +171,7 @@
     };
     state.dragPreview = null;
     state.showAllPassages = false;
+    setSheetState("peek");
     try { localStorage.setItem(LS_KEY_KM, projected.km.toFixed(4)); } catch (e) {}
     renderMap();
     updateSelectionPanel();
@@ -486,6 +494,7 @@
   function updateSelectionPanel() {
     if (!state.selectedPoint) {
       elements.sidePanel.dataset.empty = "true";
+      elements.sidePanel.dataset.sheet = "peek";
       elements.nearestStation.textContent = "-";
       elements.nearestCrossing.textContent = "-";
       elements.selectionDetailSummary.textContent = "えらんだ場所の説明がここに出ます。";
@@ -767,6 +776,52 @@
     });
   }
 
+  function initializeBottomSheetDrag() {
+    var handle = elements.sheetHandleBar;
+    if (!handle) { return; }
+
+    var sheetDrag = null;
+
+    handle.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      sheetDrag = { pointerId: e.pointerId, startY: e.clientY };
+      handle.setPointerCapture(e.pointerId);
+    });
+
+    handle.addEventListener("pointermove", function (e) {
+      if (!sheetDrag || e.pointerId !== sheetDrag.pointerId) { return; }
+      e.preventDefault();
+    });
+
+    handle.addEventListener("pointerup", function (e) {
+      if (!sheetDrag || e.pointerId !== sheetDrag.pointerId) { return; }
+      var dy = e.clientY - sheetDrag.startY;
+      sheetDrag = null;
+
+      if (Math.abs(dy) < 12) {
+        setSheetState(state.sheetState === "full" ? "peek" : "full");
+        return;
+      }
+
+      if (dy > 50 && state.sheetState === "full") {
+        setSheetState("peek");
+      } else if (dy < -50 && state.sheetState === "peek") {
+        setSheetState("full");
+      }
+    });
+
+    handle.addEventListener("pointercancel", function () {
+      sheetDrag = null;
+    });
+
+    handle.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setSheetState(state.sheetState === "full" ? "peek" : "full");
+      }
+    });
+  }
+
   function initializeLocationLists() {
     function handleLocationButton(event) {
       var button = event.target.closest("[data-location-km]");
@@ -923,6 +978,7 @@
     initializeScheduleSelection();
     initializeButtons();
     initializeDrawer();
+    initializeBottomSheetDrag();
     initializeLocationLists();
     initializeDragPicker();
     initializeKmAdjuster();
