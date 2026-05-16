@@ -73,6 +73,15 @@
             <div class="selection-km" id="selectionKm"></div>
           </header>
 
+          <div class="km-adjuster" id="kmAdjuster" hidden>
+            <div class="km-adj-row">
+              <button type="button" id="kmMinus" class="secondary compact-button km-adj-btn" aria-label="0.05km 戻す">−</button>
+              <input type="number" id="kmInput" class="km-adj-input" step="0.05" min="0" max="9.20" aria-label="吉原からの距離 km">
+              <button type="button" id="kmPlus" class="secondary compact-button km-adj-btn" aria-label="0.05km 進める">＋</button>
+            </div>
+            <div class="km-adj-context" id="kmAdjContext"></div>
+          </div>
+
           <div class="side-next" id="sideNextSection">
             <div class="side-dir">
               <div class="side-dir-label"><span class="mini inbound"></span>上り　次の1本</div>

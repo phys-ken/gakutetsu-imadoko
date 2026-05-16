@@ -22,6 +22,7 @@
   };
 
   var pickerDrag = null;
+  var LS_KEY_KM = "gakutetsu.selectedKm";
 
   var elements = {
     clockValue: document.getElementById("clockValue"),
@@ -56,7 +57,12 @@
     allPassagesSection: document.getElementById("allPassagesSection"),
     allPassagesList: document.getElementById("allPassagesList"),
     stationList: document.getElementById("stationList"),
-    crossingList: document.getElementById("crossingList")
+    crossingList: document.getElementById("crossingList"),
+    kmAdjuster: document.getElementById("kmAdjuster"),
+    kmInput: document.getElementById("kmInput"),
+    kmMinus: document.getElementById("kmMinus"),
+    kmPlus: document.getElementById("kmPlus"),
+    kmAdjContext: document.getElementById("kmAdjContext")
   };
 
   var scheduleInputs = Array.from(document.querySelectorAll("input[name='scheduleType']"));
@@ -158,6 +164,7 @@
     };
     state.dragPreview = null;
     state.showAllPassages = false;
+    try { localStorage.setItem(LS_KEY_KM, projected.km.toFixed(4)); } catch (e) {}
     renderMap();
     updateSelectionPanel();
   }
@@ -246,6 +253,21 @@
       station: nearestStation,
       crossing: nearestCrossing
     };
+  }
+
+  function buildKmContext(km) {
+    var before = ROUTE_STATIONS.reduce(function (best, s) {
+      return s.km <= km && (!best || s.km > best.km) ? s : best;
+    }, null);
+    var after = ROUTE_STATIONS.reduce(function (best, s) {
+      return s.km >= km && (!best || s.km < best.km) ? s : best;
+    }, null);
+
+    if (!before || !after || before === after) {
+      return before ? before.name : (after ? after.name : "");
+    }
+
+    return before.name + " から " + (km - before.km).toFixed(2) + " km\n" + after.name + " まで " + (after.km - km).toFixed(2) + " km";
   }
 
   function offsetPointForDirection(point, km, direction) {
@@ -476,6 +498,7 @@
       elements.allPassagesList.innerHTML = "";
       elements.toggleAllButton.disabled = true;
       elements.toggleAllButton.textContent = "今日のぜんぶを見る";
+      elements.kmAdjuster.hidden = true;
       syncLocationButtons();
       return;
     }
@@ -530,6 +553,9 @@
       elements.allPassagesList.innerHTML = "";
     }
 
+    elements.kmAdjuster.hidden = false;
+    elements.kmInput.value = state.selectedPoint.km.toFixed(2);
+    elements.kmAdjContext.textContent = buildKmContext(state.selectedPoint.km);
     syncLocationButtons();
   }
 
@@ -697,6 +723,7 @@
       state.dragPreview = null;
       state.showAllPassages = false;
       state.showSidePanelAll = false;
+      try { localStorage.removeItem(LS_KEY_KM); } catch (e) {}
       renderMap();
       updateSelectionPanel();
     });
@@ -856,12 +883,48 @@
     });
   }
 
+  function initializeKmAdjuster() {
+    var MIN_KM = ROUTE_STATIONS[0].km;
+    var MAX_KM = ROUTE_STATIONS[ROUTE_STATIONS.length - 1].km;
+    var STEP = 0.05;
+
+    function adjustKm(delta) {
+      if (!state.selectedPoint) { return; }
+      var raw = Math.round((state.selectedPoint.km + delta) * 1000) / 1000;
+      selectKm(Math.max(MIN_KM, Math.min(MAX_KM, raw)));
+    }
+
+    elements.kmMinus.addEventListener("click", function () { adjustKm(-STEP); });
+    elements.kmPlus.addEventListener("click", function () { adjustKm(STEP); });
+
+    elements.kmInput.addEventListener("change", function () {
+      var value = parseFloat(elements.kmInput.value);
+      if (!Number.isFinite(value)) { return; }
+      selectKm(Math.max(MIN_KM, Math.min(MAX_KM, value)));
+    });
+  }
+
+  function restoreFromLocalStorage() {
+    try {
+      var savedKm = localStorage.getItem(LS_KEY_KM);
+      if (savedKm === null) { return; }
+      var km = Number(savedKm);
+      var minKm = ROUTE_STATIONS[0].km;
+      var maxKm = ROUTE_STATIONS[ROUTE_STATIONS.length - 1].km;
+      if (Number.isFinite(km) && km >= minKm && km <= maxKm) {
+        selectKm(km);
+      }
+    } catch (e) {}
+  }
+
   function initialize() {
     initializeScheduleSelection();
     initializeButtons();
     initializeDrawer();
     initializeLocationLists();
     initializeDragPicker();
+    initializeKmAdjuster();
+    restoreFromLocalStorage();
     initializeDemoSelection();
     updateSelectionPanel();
     window.setInterval(updateClock, 1000);

@@ -1034,6 +1034,72 @@ button:disabled {
   font-size: 0.92rem;
 }
 
+/* ─── Fix [hidden] attribute being overridden by display:grid ─── */
+.app-drawer[hidden] {
+  display: none;
+}
+
+/* ─── km adjuster panel ─── */
+.km-adjuster[hidden] {
+  display: none;
+}
+
+.km-adjuster {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.km-adj-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.km-adj-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  padding: 7px 0;
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.km-adj-input {
+  flex: 1;
+  min-width: 0;
+  border: 3px solid var(--outline);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font: inherit;
+  font-weight: 900;
+  font-size: 0.95rem;
+  text-align: center;
+  background: #fff;
+  color: var(--ink);
+  -moz-appearance: textfield;
+  appearance: textfield;
+  outline: none;
+}
+
+.km-adj-input::-webkit-inner-spin-button,
+.km-adj-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+.km-adj-input:focus {
+  border-color: var(--route);
+}
+
+.km-adj-context {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--sub);
+  text-align: center;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
 /* ─── GitHub link in drawer ─── */
 .drawer-github-link {
   display: inline-flex;
@@ -1226,7 +1292,7 @@ button:disabled {
     flex-shrink: 0;
   }
 
-  /* ── Drawer: full screen on mobile ── */
+  /* ── Drawer: full screen on mobile, explicit transform to prevent stuck-open bug ── */
   .app-drawer {
     top: 0;
     left: 0;
@@ -1236,6 +1302,11 @@ button:disabled {
     border-radius: 0;
     border: none;
     box-shadow: none;
+    transform: translateX(110%);
+  }
+
+  .app-drawer.is-open {
+    transform: translateX(0);
   }
 
   /* ── Location lists: 2 columns ── */
