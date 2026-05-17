@@ -1,0 +1,5 @@
+{
+  "ignore": ["src/main.py"],
+  "reportMissingImports": "none",
+  "reportUndefinedVariable": "none"
+}

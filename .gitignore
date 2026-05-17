@@ -15,3 +15,9 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# M5Stack ファームウェアバイナリ（大きいので除外）
+m5stack/firmware/
+*.bin
+__pycache__/
+*.pyc
