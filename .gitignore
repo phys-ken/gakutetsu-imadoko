@@ -43,6 +43,10 @@ m5stack/tools/validate_map.html
 m5stack/src/local_config.py
 # upload.ps1 が自動生成するフラッシュ時刻ファイル
 m5stack/src/boot_time.py
+# NVS 操作用一時ファイル（esptool/nvs_partition_gen 生成物）
+nvs_backup.bin
+nvs_runmainpy.bin
+nvs_config.csv
 
 # ============================================================
 # 開発中の一時ファイル
