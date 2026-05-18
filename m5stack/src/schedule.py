@@ -111,8 +111,8 @@ def fmt_rel(now_min, target_min_float):
     h = total // 60
     m = total % 60
     if h > 0:
-        return "{}{:d}h{:02d}m".format(sign, h, m)
-    return "{}{:d}m".format(sign, m)
+        return "{}{:d}h{:02d}min".format(sign, h, m)
+    return "{}{:d}min".format(sign, m)
 
 
 # ===== PC 上でのセルフテスト =====
@@ -130,8 +130,8 @@ if __name__ == '__main__':
         print("  km={:.2f}  dir={}".format(t['km'], t['direction']))
     print("total:", len(trains))
 
-    print("\n--- passage events at km=2.5 ---")
-    events = get_passage_events(sched, 2.5)
+    print("\n--- passage events at km=5.0 ---")
+    events = get_passage_events(sched, 5.0)
     for e in events[:6]:
         rel = fmt_rel(now_min, e['min'])
         print("  {} {}  ({})".format(fmt_hm(e['min']), e['direction'], rel))

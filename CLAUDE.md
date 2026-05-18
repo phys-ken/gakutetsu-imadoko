@@ -41,6 +41,23 @@ app.js       →                          (UIイベント・状態管理。windo
 - `parseMatrix` の列順は `inbound`（江尾→吉原）と `outbound`（吉原→江尾）で逆になる
 - 踏切 ID は `cr01` から連番。新規追加は km 順（吉原側が先）で並べる
 
+## M5Stack 開発ワークフロー
+
+### コード変更後の upload
+
+`m5stack/src/` 配下のファイルを変更したら、**ユーザの承認を待たずに自動で** upload を実行すること。
+
+```powershell
+cd m5stack/tools
+.\upload.ps1 COM5
+```
+
+upload 後にユーザへ「M5Stack をリセットしてください」と伝える。写真が送られてきたら表示を確認してフィードバックする。
+
+upload コマンドは `settings.json` の allowList に登録済みのため自動承認される。
+
+---
+
 ## Common maintenance tasks
 
 詳細なテンプレートは `docs/llm-tasks.md` を参照。

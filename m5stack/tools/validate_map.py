@@ -15,6 +15,7 @@ import map_coords as mc
 import schedule as sch
 
 SCALE = 3          # 320x240 → 960x720 (見やすくするため拡大)
+TARGET_KM = 5.0    # 観測地点 (local_config.py と合わせる)
 SCREEN_W = 320 * SCALE
 SCREEN_H = 240 * SCALE
 BAR_Y = 200 * SCALE
@@ -102,7 +103,7 @@ def sample_trains(now_min, sched):
     return "\n    ".join(result)
 
 def target_marker():
-    km = 2.5
+    km = TARGET_KM
     km_list = mc.STATION_KM
     rd_list = mc.STATION_ROUTE_DIST
     for i in range(len(km_list) - 1):
@@ -121,7 +122,7 @@ def target_marker():
                     return (f'<circle cx="{mx:.0f}" cy="{my:.0f}" r="9" '
                             f'fill="none" stroke="cyan" stroke-width="2"/>'
                             f'<text x="{mx:.0f}" y="{my-12:.0f}" text-anchor="middle" '
-                            f'font-size="10" fill="cyan">km2.5</text>')
+                            f'font-size="10" fill="cyan">km{km:.1f}</text>')
     return ""
 
 def generate_html(out_path):
@@ -131,7 +132,7 @@ def generate_html(out_path):
 
     hm = "{}:{:02d}".format(now.hour, now.minute)
 
-    events = sch.get_passage_events(sched, 2.5)
+    events = sch.get_passage_events(sched, TARGET_KM)
     next_in  = next((e for e in events if e['direction']=='inbound'  and e['min']>=now_min), None)
     next_out = next((e for e in events if e['direction']=='outbound' and e['min']>=now_min), None)
 
@@ -142,7 +143,7 @@ def generate_html(out_path):
 
     bar_text = (
         f"{sched.upper()[:3]} {hm} | "
-        f"next km2.5: ^{evt_str(next_in)}  v{evt_str(next_out)}"
+        f"next km{TARGET_KM:.1f}: ^{evt_str(next_in)}  v{evt_str(next_out)}"
     )
 
     trains_svg = sample_trains(now_min, sched)
@@ -170,7 +171,7 @@ def generate_html(out_path):
             fill="none" stroke="white" stroke-width="2"/>
   <!-- 駅 & ラベル -->
   {stations_svg}
-  <!-- km2.5 対象地点 -->
+  <!-- 対象地点 -->
   {tgt_svg}
   <!-- 走行中の列車 -->
   {trains_svg}
@@ -186,7 +187,7 @@ def generate_html(out_path):
 <div class="info">
   現在時刻: {now.strftime('%Y-%m-%d %H:%M')} / {sched} ダイヤ<br>
   走行中列車: {len(sch.get_running_trains(sched, now_min))} 本<br>
-  km2.5 通過イベント: {len(events)} 件 (平日 {len(sch.get_passage_events('weekday',2.5))}件 / 土休日 {len(sch.get_passage_events('holiday',2.5))}件)<br>
+  対象 km 通過イベント: {len(events)} 件 (平日 {len(sch.get_passage_events('weekday',TARGET_KM))}件 / 土休日 {len(sch.get_passage_events('holiday',TARGET_KM))}件)<br>
   駅座標:<br>
   {'<br>'.join("  {}: ({},{}) routeDist={:.0f}".format(
       n, mc.STATION_PX[i][0], mc.STATION_PX[i][1], mc.STATION_ROUTE_DIST[i])
