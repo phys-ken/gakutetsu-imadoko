@@ -99,12 +99,16 @@ python -m mpremote connect COM5 exec "import esp32; nvs=esp32.NVS('uiflow'); nvs
 
 ### 踏切の追加
 
+**Web 版のみ。M5Stack 版（`m5stack/src/`）に変更不要。**
+
 `src/data.js` の `CROSSINGS` 配列に追加。緯度経度が分かる場合は `crossingAtGeo`、km値が分かる場合は `crossingAtKm` を使う。
 
 ```js
 crossingAtGeo("cr05", "○○踏切", 35.1610, 138.7050)
 // ↑ 線路上でなくてよい。内部で自動投影される
 ```
+
+追加後は `cr01` から始まる連番を km 順（吉原側が先）に保つこと。踏切の現地名称確認・座標取得は作業者が行う（[`docs/llm-tasks.md`](docs/llm-tasks.md) 作業B 参照）。
 
 ### 祝日の年次更新
 

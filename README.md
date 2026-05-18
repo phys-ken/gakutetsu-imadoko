@@ -36,14 +36,39 @@ docs/
   llm-tasks.md      LLMへの作業依頼テンプレート
 ```
 
-## データの更新
+## 定期メンテナンス
 
-データはすべて `src/data.js` に集約しています。
+詳細な作業テンプレートは [`docs/llm-tasks.md`](docs/llm-tasks.md) を参照してください。
 
-- **ダイヤ改正** → `RAW_TIMETABLES` の時刻表行列を更新
-- **踏切の追加** → `CROSSINGS` 配列に1行追加
+### ダイヤ改正（時刻表の更新）
 
-詳しくは [`docs/dev-guide.md`](docs/dev-guide.md) と [`docs/llm-tasks.md`](docs/llm-tasks.md) を参照してください。
+**Web 版と M5Stack 版の両方** を更新する必要があります。
+
+| 更新対象 | ファイル |
+|---|---|
+| Web 版 | `src/data.js` — `RAW_TIMETABLES` の `parseMatrix(...)` 文字列を差し替え |
+| M5Stack 版 | `m5stack/src/data.py` — 同じ時刻を分単位整数で記述 |
+| 祝日 | `src/data.js` の `HOLIDAYS_2026`（年が変わるとき）と `app.js` 内の参照箇所 |
+
+### 踏切の追加（Web 版のみ・M5Stack は不要）
+
+踏切データは `src/data.js` の `CROSSINGS` 配列にのみ登録します。M5Stack 版には反映しません。
+
+**フィールドサーベイの手順：**
+
+1. 現地を歩いて踏切の正式名称を確認する（標識・看板）
+2. スマホの地図アプリや地理院地図で踏切中心の緯度経度を取得する
+3. 既存の踏切 ID（現在 `cr01`〜`cr04`）の次の番号を確認する
+4. 以下をこのチャットに投げる：
+
+```
+踏切の名前: ○○踏切
+緯度: 35.XXXX
+経度: 138.XXXX
+追加するID: cr05（既存の最大番号の次）
+```
+
+`crossingAtGeo` は自動的に線路上に投影するため、座標は線路上でなくてよいです。
 
 ## 技術スタック
 
