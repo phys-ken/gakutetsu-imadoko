@@ -20,7 +20,7 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 Write-Host "Generated boot_time.py  ($yr-$('{0:D2}' -f $mo)-$('{0:D2}' -f $dy) $('{0:D2}' -f $hh):$('{0:D2}' -f $mm):$('{0:D2}' -f $ss) JST)"
 
 # ── ファイルをアップロード ──
-$files = @("map_coords.py", "data.py", "schedule.py", "wifi_ntp.py", "boot_time.py", "main.py", "local_config.py")
+$files = @("boot.py", "map_coords.py", "data.py", "schedule.py", "wifi_ntp.py", "boot_time.py", "main.py", "local_config.py")
 
 foreach ($f in $files) {
     $local = Join-Path $src $f
