@@ -4,7 +4,7 @@
 param([Parameter(Mandatory)][string]$Port)
 
 $src = "$PSScriptRoot\..\src"
-$files = @("map_coords.py", "data.py", "schedule.py", "main.py", "local_config.py")
+$files = @("map_coords.py", "data.py", "schedule.py", "wifi_ntp.py", "main.py", "local_config.py")
 
 foreach ($f in $files) {
     $local = Join-Path $src $f

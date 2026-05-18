@@ -7,15 +7,37 @@ from M5 import *
 
 import schedule as _s
 import map_coords as _mc
+import wifi_ntp
 
-# ── 開発用モック時刻。本番運用時は None に戻す ──
-MOCK_TIME = (7, 30)  # (hour, minute) — 開発用モック。本番はNone
-
-# ── 観測スポット (local_config.py がなければ路線中央付近をデフォルト) ──
+# ── 観測スポット (local_config.py がなければデフォルト) ──
 try:
-    from local_config import TARGET_KM
+    from local_config import TARGET_KM as _DEFAULT_KM
 except ImportError:
-    TARGET_KM = 5.0
+    _DEFAULT_KM = 2.5
+
+# ── WiFi 接続情報 (local_config.py に WIFI_NETWORKS がなければ空) ──
+try:
+    from local_config import WIFI_NETWORKS
+except ImportError:
+    WIFI_NETWORKS = []
+
+# ── user_prefs.json から TARGET_KM を復元（なければデフォルト） ──
+try:
+    import ujson
+    with open('user_prefs.json', 'r') as _f:
+        _prefs = ujson.load(_f)
+    TARGET_KM = float(_prefs.get('target_km', _DEFAULT_KM))
+except Exception:
+    TARGET_KM = _DEFAULT_KM
+
+
+def _save_target_km():
+    try:
+        import ujson
+        with open('user_prefs.json', 'w') as f:
+            ujson.dump({'target_km': TARGET_KM}, f)
+    except Exception:
+        pass
 
 # ── Colors (RGB888) ──
 BG     = 0xFFFFFF  # 白
@@ -44,7 +66,6 @@ ROW_H_SZ1 = FH1 + 1    # 16
 ST_HOME  = 0
 ST_MENU  = 1
 ST_TABLE = 2
-ST_DEBUG = 3
 
 ARROW_SZ  = 14
 ARROW_PAD = ARROW_SZ + 3   # 端からこれ以内なら矢印スキップ
@@ -55,10 +76,6 @@ WDAYS = ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')
 # ── RTC ──
 def _jst(rtc):
     dt = rtc.datetime()  # (year,month,day,weekday,hour,min,sec,subsec)
-    if MOCK_TIME is not None:
-        hh, mm = MOCK_TIME
-        dt = dt[:4] + (hh, mm, 0) + dt[7:]
-        return hh * 60 + mm, dt
     return dt[4] * 60 + dt[5], dt
 
 
@@ -139,14 +156,21 @@ def _nav_bar(state, dt):
     cy = NAV_Y + NAV_H // 2  # 222
 
     # A アイコン (cx=53)
-    if state in (ST_MENU, ST_TABLE):
+    if state == ST_HOME:
+        # ← (左矢印)
+        Lcd.fillTriangle(43, cy, 63, cy - 10, 63, cy + 10, BG)
+    elif state in (ST_MENU, ST_TABLE):
         Lcd.fillTriangle(53, cy - 10, 43, cy + 8, 63, cy + 8, BG)
-    # HOME では不活性 → アイコンなし
 
     # B アイコン (cx=160)
     if state == ST_HOME:
-        for oy in (-6, 0, 6):
-            Lcd.fillRect(150, cy + oy - 1, 20, 3, BG)
+        # km X.X を中央表示
+        Lcd.setTextSize(1)
+        km_str = "km {:.1f}".format(TARGET_KM)
+        tw = Lcd.textWidth(km_str)
+        Lcd.setTextColor(BG, NAVBG)
+        Lcd.drawString(km_str, 160 - tw // 2, cy - 7)
+        # ハンバーガーアイコンは省略（km表示で領域使用）
     elif state == ST_TABLE:
         Lcd.fillTriangle(150, cy, 170, cy - 10, 170, cy + 10, BG)
     else:
@@ -156,9 +180,11 @@ def _nav_bar(state, dt):
         Lcd.drawLine(157, cy + 9, 171, cy - 5, BG)
 
     # C アイコン (cx=266)
-    if state in (ST_MENU, ST_TABLE):
+    if state == ST_HOME:
+        # → (右矢印)
+        Lcd.fillTriangle(277, cy, 257, cy - 10, 257, cy + 10, BG)
+    elif state in (ST_MENU, ST_TABLE):
         Lcd.fillTriangle(266, cy + 10, 256, cy - 8, 276, cy - 8, BG)
-    # HOME では不活性 → アイコンなし
 
 
 
@@ -249,7 +275,7 @@ def draw_menu(sched, now_min, dt, sel):
     Lcd.setTextSize(2)
     Lcd.drawString("MENU", 10, 3)
 
-    items = ('Timetable', 'Debug', 'Back')
+    items = ('Timetable', 'Sync Time', 'Back')
     for i, lbl in enumerate(items):
         y  = 44 + i * 44
         bg = LGRAY if i == sel else BG
@@ -328,104 +354,117 @@ def draw_timetable(sched, now_min, dt, scroll):
     _nav_bar(ST_TABLE, dt)
 
 
-def draw_debug(dt):
-    """
-    デバッグページ: フォントの実際のピクセル寸法を計測・表示する。
-    本番画面には一切影響しない。B ボタンでメニューへ戻る。
-    """
-    Lcd.fillScreen(BG)
-    Lcd.fillRect(0, 0, 320, 22, NAVBG)
+
+# ── WiFi同期ヘルパー ──
+
+def _draw_sync_screen(msg):
+    Lcd.fillRect(0, 0, 320, 36, NAVBG)
     Lcd.setTextSize(1)
     Lcd.setTextColor(BG, NAVBG)
-    Lcd.drawString("DEBUG  B:back", 4, 7)
+    Lcd.drawString(msg, 8, 11)
 
-    # ── 計測 ──
-    Lcd.setTextSize(2)
-    wg = Lcd.textWidth("GAKUTETSU")
-    wi = Lcd.textWidth("IMADOKO")
-    wt = Lcd.textWidth("10:52")
-    try:    fh2 = Lcd.fontHeight()
-    except: fh2 = -1
-    try:    fw2 = Lcd.fontWidth()
-    except: fw2 = -1
 
-    Lcd.setTextSize(1)
-    try:    fh1 = Lcd.fontHeight()
-    except: fh1 = -1
-    try:    fw1 = Lcd.fontWidth()
-    except: fw1 = -1
-
-    # ── 計測値テキスト表示 ──
-    Lcd.setTextColor(BLACK, BG)
-    Lcd.drawString("sz1: h={} w={}".format(fh1, fw1), 4, 26)
-    Lcd.drawString("sz2: h={} w={}  GAKU={} IMA={} 10:52={}".format(
-        fh2, fw2, wg, wi, wt), 4, 38)
-
-    Lcd.drawLine(0, 52, 320, 52, GRAY)
-    Lcd.drawLine(160, 52, 160, NAV_Y, GRAY)
-
-    # ── 左パネル: fontHeight 間隔 (正しい間隔仮説) ──
-    Lcd.drawString("L: sp=fontH({})".format(fh2), 4, 56)
-    # ── 右パネル: 20px 間隔 (現在の本番設定) ──
-    Lcd.drawString("R: sp=20px (prod)", 164, 56)
-
-    # 縦ルーラー (8px 刻み)
-    for dy in range(0, 148, 8):
-        yy = 68 + dy
-        Lcd.drawLine(0, yy, 6, yy, 0xFF0000)
-        Lcd.drawLine(154, yy, 162, yy, 0xFF0000)
-        if dy % 32 == 0:
-            Lcd.setTextColor(0xFF0000, BG)
-            Lcd.drawString(str(dy), 7, yy - 4)
-            Lcd.setTextColor(BLACK, BG)
-
-    BASE = 68
-    sp = fh2 if fh2 > 0 else 24
-
-    # 左: fontHeight 間隔 (青)
-    Lcd.setTextSize(2)
-    Lcd.setTextColor(INBND, BG)
-    Lcd.drawString("GAKUTETSU", 14, BASE)
-    Lcd.drawString("IMADOKO",   14, BASE + sp)
-
-    # 右: 20px 間隔 — 本番と同じ右寄せ (320-w-8)
-    Lcd.setTextColor(OUTBND, BG)
-    Lcd.drawString("GAKUTETSU", 320 - wg - 8, BASE)
-    Lcd.drawString("IMADOKO",   320 - wi - 8, BASE + 20)
-
-    _nav_bar(ST_DEBUG, dt)
+def _do_wifi_sync(rtc):
+    """WiFi + NTP 同期を試みる。失敗してもクラッシュしない。"""
+    _draw_sync_screen("WiFi connecting...")
+    ok = wifi_ntp.sync_time(rtc, WIFI_NETWORKS)
+    if ok:
+        _draw_sync_screen("Time synced!")
+    else:
+        _draw_sync_screen("Sync failed - using RTC")
+    time.sleep_ms(1200)
 
 
 # ── メインループ ──
 
 def run():
+    global TARGET_KM
     M5.begin()
     Lcd.fillScreen(BG)
 
-    rtc      = machine.RTC()
+    rtc = machine.RTC()
+
+    # 起動時WiFi同期
+    _do_wifi_sync(rtc)
+
     state    = ST_HOME
     menu_sel = 0
     scroll   = 0
     prev_min = -1
     dirty    = True
+    last_sync_day = -1
+
+    # 長押しタイマー (ticks_ms、0=未押下)
+    a_held_t    = 0
+    c_held_t    = 0
+    a_repeat_t  = 0
+    c_repeat_t  = 0
+    b_press_tick = 0  # B長押し判定用（HOMEのみ使用）
+
+    LONG_MS   = 500   # 長押し判定閾値 (ms)
+    REPEAT_MS = 150   # オートリピート間隔 (ms)
 
     while True:
         M5.update()
-        a = BtnA.wasPressed()
-        b = BtnB.wasPressed()
-        c = BtnC.wasPressed()
+        now_t = time.ticks_ms()
+
+        a_press   = BtnA.wasPressed()
+        b_press   = BtnB.wasPressed()
+        b_release = BtnB.wasReleased()
+        c_press   = BtnC.wasPressed()
+        a_down    = BtnA.isPressed()
+        b_down    = BtnB.isPressed()
+        c_down    = BtnC.isPressed()
+
+        # A/C 長押し開始時刻を記録
+        if a_press:    a_held_t = now_t
+        if c_press:    c_held_t = now_t
+        if not a_down: a_held_t = 0; a_repeat_t = 0
+        if not c_down: c_held_t = 0; c_repeat_t = 0
+        # B: 押下時刻を記録（リリースで消費するまで保持）
+        if b_press: b_press_tick = now_t
+        if not b_down and not b_release: b_press_tick = 0  # 完全に離れた後にクリア
 
         if state == ST_HOME:
-            if b:
+            # B長押し (800ms) → 強制WiFi同期
+            if b_down and b_press_tick and time.ticks_diff(now_t, b_press_tick) >= 800:
+                b_press_tick = 0
+                _do_wifi_sync(rtc)
+                dirty = True
+            # B短押しリリース → メニュー
+            elif b_release and b_press_tick:
+                b_press_tick = 0
                 state = ST_MENU; menu_sel = 0; dirty = True
+            elif b_release:
+                b_press_tick = 0
+
+            # A: 短押し -0.1、長押しオートリピート
+            if a_press:
+                TARGET_KM = max(0.0, round(TARGET_KM - 0.1, 1))
+                _save_target_km(); dirty = True
+            elif a_down and a_held_t and time.ticks_diff(now_t, a_held_t) >= LONG_MS:
+                if a_repeat_t == 0 or time.ticks_diff(now_t, a_repeat_t) >= REPEAT_MS:
+                    TARGET_KM = max(0.0, round(TARGET_KM - 0.1, 1))
+                    _save_target_km(); dirty = True
+                    a_repeat_t = now_t
+
+            # C: 短押し +0.1、長押しオートリピート
+            if c_press:
+                TARGET_KM = min(20.0, round(TARGET_KM + 0.1, 1))
+                _save_target_km(); dirty = True
+            elif c_down and c_held_t and time.ticks_diff(now_t, c_held_t) >= LONG_MS:
+                if c_repeat_t == 0 or time.ticks_diff(now_t, c_repeat_t) >= REPEAT_MS:
+                    TARGET_KM = min(20.0, round(TARGET_KM + 0.1, 1))
+                    _save_target_km(); dirty = True
+                    c_repeat_t = now_t
 
         elif state == ST_MENU:
-            if a:
+            if a_press:
                 menu_sel = (menu_sel - 1) % 3; dirty = True
-            elif c:
+            elif c_press:
                 menu_sel = (menu_sel + 1) % 3; dirty = True
-            elif b:
-                if menu_sel == 0:       # Timetable
+            elif b_press:
+                if menu_sel == 0:   # Timetable
                     state     = ST_TABLE
                     now2, dt2 = _jst(rtc)
                     sched2    = _s.get_schedule_type(dt2)
@@ -434,23 +473,38 @@ def run():
                                        key=lambda e: e['min'])
                     fi     = next((i for i, e in enumerate(in2) if e['min'] >= now2), 0)
                     scroll = max(0, fi - 2)
-                elif menu_sel == 1:     # Debug
-                    state = ST_DEBUG
-                else:                   # Back
+                elif menu_sel == 1: # Sync Time
+                    _do_wifi_sync(rtc)
+                else:               # Back
                     state = ST_HOME
                 dirty = True
 
-        elif state == ST_DEBUG:
-            if b:
-                state = ST_MENU; dirty = True
-
         elif state == ST_TABLE:
-            if a:   scroll = max(0, scroll - 1); dirty = True
-            elif c: scroll += 1; dirty = True
-            elif b: state = ST_MENU; dirty = True
+            # A: 短押し / 長押しオートリピートで上スクロール
+            if a_press:
+                scroll = max(0, scroll - 1); dirty = True
+            elif a_down and a_held_t and time.ticks_diff(now_t, a_held_t) >= LONG_MS:
+                if a_repeat_t == 0 or time.ticks_diff(now_t, a_repeat_t) >= REPEAT_MS:
+                    scroll = max(0, scroll - 1); dirty = True
+                    a_repeat_t = now_t
+            # C: 下スクロール
+            if c_press:
+                scroll += 1; dirty = True
+            elif c_down and c_held_t and time.ticks_diff(now_t, c_held_t) >= LONG_MS:
+                if c_repeat_t == 0 or time.ticks_diff(now_t, c_repeat_t) >= REPEAT_MS:
+                    scroll += 1; dirty = True
+                    c_repeat_t = now_t
+            if b_press:
+                state = ST_MENU; dirty = True
 
         now_min, dt = _jst(rtc)
         sched       = _s.get_schedule_type(dt)
+
+        # 毎朝4:00の自動WiFi同期（1日1回）
+        if now_min == 4 * 60 and dt[2] != last_sync_day:
+            last_sync_day = dt[2]
+            _do_wifi_sync(rtc)
+            dirty = True
 
         if state == ST_HOME and now_min != prev_min:
             dirty = True
@@ -462,8 +516,6 @@ def run():
                 draw_menu(sched, now_min, dt, menu_sel)
             elif state == ST_TABLE:
                 draw_timetable(sched, now_min, dt, scroll)
-            elif state == ST_DEBUG:
-                draw_debug(dt)
             dirty    = False
             prev_min = now_min
 
