@@ -61,6 +61,32 @@ upload コマンドは `settings.json` の allowList に登録済みのため自
 コード変更後の `git add`・`git commit`・`git push` も**ユーザの承認を待たずに自動で**実行すること。
 メッセージは変更内容を簡潔に英語で記述し、末尾に `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` を付ける。
 
+### M5Stack ファイル管理の注意点
+
+- **`m5stack/src/boot.py` は削除・上書きしない。** UIFlow2 の標準 boot.py は NVS キー欠損で
+  クラッシュするため、カスタム版を維持する必要がある。
+  upload.ps1 が毎回このカスタム版を `/flash/boot.py` に書き込む。
+
+- **`local_config.py` は `.gitignore` 対象。** WiFi の SSID とパスワードが含まれるため
+  絶対にコミットしない。テンプレは `local_config.example.py`。
+
+- **`user_prefs.json` はデバイス上にのみ存在する。** ユーザがホーム画面で A/C ボタンで
+  変更した TARGET_KM がここに保存される。upload.ps1 は上書きしないため設定は保持される。
+
+- **`boot_time.py` は手動編集不要。** upload.ps1 が PC 現在時刻で自動生成する。
+
+### 画面が真っ暗になったとき（NVS トラブル）
+
+```powershell
+# NVS boot_option を確認（0 が正常）
+python -m mpremote connect COM5 exec "import esp32; print(esp32.NVS('uiflow').get_u8('boot_option'))"
+# 0 でなければ修正
+python -m mpremote connect COM5 exec "import esp32; nvs=esp32.NVS('uiflow'); nvs.set_u8('boot_option',0); nvs.commit()"
+# upload.ps1 で boot.py を再アップロード後、リセット
+```
+
+詳細は `m5stack/README.md` のトラブルシューティング節を参照。
+
 ---
 
 ## Common maintenance tasks
