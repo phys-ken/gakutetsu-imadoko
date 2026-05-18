@@ -128,8 +128,7 @@ def _tangent_angle(seg_idx, direction):
 # ── 描画ヘルパー ──
 
 def _arrow(x, y, angle, color):
-    if y < INFO_H + ARROW_PAD or y > NAV_Y - ARROW_PAD:
-        return
+    # INFO バー・NAV バーは矢印より後に描画されるため y クリップ不要
     if x < -ARROW_SZ or x > 320 + ARROW_SZ:
         return
     s, c = math.sin(angle), math.cos(angle)
