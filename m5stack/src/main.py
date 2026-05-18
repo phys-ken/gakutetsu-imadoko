@@ -66,6 +66,7 @@ ROW_H_SZ1 = FH1 + 1    # 16
 ST_HOME  = 0
 ST_MENU  = 1
 ST_TABLE = 2
+ST_WIFI  = 3
 
 ARROW_SZ  = 14
 ARROW_PAD = ARROW_SZ + 3   # 端からこれ以内なら矢印スキップ
@@ -185,6 +186,7 @@ def _nav_bar(state, dt):
         Lcd.fillTriangle(277, cy, 257, cy - 10, 257, cy + 10, BG)
     elif state in (ST_MENU, ST_TABLE):
         Lcd.fillTriangle(266, cy + 10, 256, cy - 8, 276, cy - 8, BG)
+    # ST_WIFI: C 不活性 → アイコンなし
 
 
 
@@ -275,13 +277,13 @@ def draw_menu(sched, now_min, dt, sel):
     Lcd.setTextSize(2)
     Lcd.drawString("MENU", 10, 3)
 
-    items = ('Timetable', 'Sync Time', 'Back')
+    items = ('Timetable', 'Sync Time', 'WiFi Info', 'Back')
     for i, lbl in enumerate(items):
-        y  = 44 + i * 44
+        y  = 40 + i * 40
         bg = LGRAY if i == sel else BG
-        Lcd.fillRect(4, y - 2, 312, 36, bg)
+        Lcd.fillRect(4, y - 2, 312, 32, bg)
         if i == sel:
-            Lcd.fillRect(4, y - 2, 6, 36, INBND)
+            Lcd.fillRect(4, y - 2, 6, 32, INBND)
         Lcd.setTextColor(BLACK, bg)
         Lcd.setTextSize(2)
         Lcd.drawString(lbl, 18, y)
@@ -355,6 +357,38 @@ def draw_timetable(sched, now_min, dt, scroll):
 
 
 
+def draw_wifi_info(dt):
+    Lcd.fillScreen(BG)
+    Lcd.fillRect(0, 0, 320, 22, NAVBG)
+    Lcd.setTextColor(BG, NAVBG)
+    Lcd.setTextSize(1)
+    Lcd.drawString("WiFi INFO", 4, 7)
+
+    n = len(WIFI_NETWORKS)
+    Lcd.setTextSize(1)
+    if n == 0:
+        Lcd.setTextColor(0xCC4400, BG)
+        Lcd.drawString("No WiFi configured", 4, 28)
+    else:
+        Lcd.setTextColor(0x007700, BG)
+        Lcd.drawString("{} network(s) registered:".format(n), 4, 28)
+        for i, (ssid, _) in enumerate(WIFI_NETWORKS[:3]):
+            Lcd.setTextColor(GRAY, BG)
+            Lcd.drawString("  {}. {}".format(i + 1, ssid[:30]), 4, 44 + i * 14)
+
+    Lcd.drawLine(0, 92, 320, 92, LGRAY)
+    Lcd.setTextColor(DKGRAY, BG)
+    Lcd.drawString("To add WiFi:", 4, 96)
+    Lcd.drawString("1. Edit local_config.py", 4, 110)
+    Lcd.drawString("   WIFI_NETWORKS = [", 4, 124)
+    Lcd.drawString("     (\"SSID\", \"PASS\"),", 4, 138)
+    Lcd.drawString("   ]", 4, 152)
+    Lcd.drawString("2. Run upload.ps1 COM5", 4, 166)
+    Lcd.drawString("3. Reset M5Stack", 4, 180)
+
+    _nav_bar(ST_WIFI, dt)
+
+
 # ── WiFi同期ヘルパー ──
 
 def _draw_sync_screen(msg):
@@ -383,6 +417,14 @@ def run():
     Lcd.fillScreen(BG)
 
     rtc = machine.RTC()
+
+    # RTC が未設定（year < 2025）なら flash 時刻をフォールバックに使う
+    try:
+        from boot_time import FLASH_DT
+        if rtc.datetime()[0] < 2025:
+            rtc.datetime(FLASH_DT)
+    except Exception:
+        pass
 
     # 起動時WiFi同期
     _do_wifi_sync(rtc)
@@ -421,9 +463,9 @@ def run():
         if c_press:    c_held_t = now_t
         if not a_down: a_held_t = 0; a_repeat_t = 0
         if not c_down: c_held_t = 0; c_repeat_t = 0
-        # B: 押下時刻を記録（リリースで消費するまで保持）
-        if b_press: b_press_tick = now_t
-        if not b_down and not b_release: b_press_tick = 0  # 完全に離れた後にクリア
+        # B: HOME画面でのみ長押し判定に使う（他状態からのリリースで誤発火しないよう）
+        if b_press and state == ST_HOME: b_press_tick = now_t
+        if not b_down and not b_release: b_press_tick = 0
 
         if state == ST_HOME:
             # B長押し (800ms) → 強制WiFi同期
@@ -460,9 +502,9 @@ def run():
 
         elif state == ST_MENU:
             if a_press:
-                menu_sel = (menu_sel - 1) % 3; dirty = True
+                menu_sel = (menu_sel - 1) % 4; dirty = True
             elif c_press:
-                menu_sel = (menu_sel + 1) % 3; dirty = True
+                menu_sel = (menu_sel + 1) % 4; dirty = True
             elif b_press:
                 if menu_sel == 0:   # Timetable
                     state     = ST_TABLE
@@ -475,9 +517,15 @@ def run():
                     scroll = max(0, fi - 2)
                 elif menu_sel == 1: # Sync Time
                     _do_wifi_sync(rtc)
+                elif menu_sel == 2: # WiFi Info
+                    state = ST_WIFI
                 else:               # Back
                     state = ST_HOME
                 dirty = True
+
+        elif state == ST_WIFI:
+            if b_press:
+                state = ST_MENU; dirty = True
 
         elif state == ST_TABLE:
             # A: 短押し / 長押しオートリピートで上スクロール
@@ -516,6 +564,8 @@ def run():
                 draw_menu(sched, now_min, dt, menu_sel)
             elif state == ST_TABLE:
                 draw_timetable(sched, now_min, dt, scroll)
+            elif state == ST_WIFI:
+                draw_wifi_info(dt)
             dirty    = False
             prev_min = now_min
 
