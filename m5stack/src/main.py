@@ -7,7 +7,12 @@ from M5 import *
 
 import schedule as _s
 import map_coords as _mc
-import wifi_ntp
+try:
+    import wifi_ntp
+    _WIFI_AVAILABLE = True
+except Exception:
+    wifi_ntp = None
+    _WIFI_AVAILABLE = False
 
 # ── 観測スポット (local_config.py がなければデフォルト) ──
 try:
@@ -400,6 +405,10 @@ def _draw_sync_screen(msg):
 
 def _do_wifi_sync(rtc):
     """WiFi + NTP 同期を試みる。失敗してもクラッシュしない。"""
+    if not _WIFI_AVAILABLE:
+        _draw_sync_screen("WiFi module N/A")
+        time.sleep_ms(1000)
+        return
     _draw_sync_screen("WiFi connecting...")
     ok = wifi_ntp.sync_time(rtc, WIFI_NETWORKS)
     if ok:
@@ -426,8 +435,8 @@ def run():
     except Exception:
         pass
 
-    # 起動時WiFi同期
-    _do_wifi_sync(rtc)
+    # WiFi同期は起動時に自動実行しない（mpremote 接続のためブロッキング処理を起動時に置かない）
+    # 同期は B長押し または メニュー "Sync Time" から手動で実行
 
     state    = ST_HOME
     menu_sel = 0
@@ -587,4 +596,4 @@ except Exception as exc:
     except:
         pass
     sys.print_exception(exc)
-    time.sleep(30)  # 30秒待機: mpremote で接続するチャンス
+    time.sleep(3)  # 3秒後に再起動（mpremote が割り込めるよう短めに）
