@@ -50,6 +50,26 @@ docs/
 ビルドツールなし。HTML + CSS + バニラJavaScriptのみ。外部ライブラリ・APIキー不要。  
 GitHub Pagesにそのまま公開できます。
 
+## M5Stack 版（実機スタンドアロンアプリ）
+
+`m5stack/` サブフォルダに、M5Stack Basic 用の MicroPython アプリが含まれています。
+
+| 機能 | 内容 |
+|---|---|
+| ホーム画面 | 路線地図 + 列車リアルタイム位置（矢印）+ INFO バー |
+| INFO バー | 直近2本の通過時刻を `Xmin(H:MM)` 形式で表示、右端に日付・現在時刻 |
+| 時刻表画面 | 上り・下り全通過時刻、次の列車を赤字でハイライト |
+
+**必要なもの:** M5Stack Basic、USB-C ケーブル、UIFlow2 ファームウェア
+
+```powershell
+# ファイルをM5Stackに転送してRTCを同期
+cd m5stack\tools
+.\upload.ps1 COM5   # COMポートは環境に合わせて変更
+```
+
+詳しいセットアップ手順は [`m5stack/README.md`](m5stack/README.md) を参照してください。
+
 ## ライセンス
 
 時刻表データは岳南電車の公開情報をもとに作成しています。  
