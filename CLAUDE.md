@@ -56,6 +56,11 @@ upload 後にユーザへ「M5Stack をリセットしてください」と伝�
 
 upload コマンドは `settings.json` の allowList に登録済みのため自動承認される。
 
+### git commit / push
+
+コード変更後の `git add`・`git commit`・`git push` も**ユーザの承認を待たずに自動で**実行すること。
+メッセージは変更内容を簡潔に英語で記述し、末尾に `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>` を付ける。
+
 ---
 
 ## Common maintenance tasks
