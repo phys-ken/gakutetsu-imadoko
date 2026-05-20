@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>がくてつ いまどこ？</title>
-  <link rel="stylesheet" href="./styles/main.css">
+  <link rel="stylesheet" href="./styles/main.css?v=2026052101">
 </head>
 <body>
   <div class="app">
@@ -58,6 +58,8 @@
             </button>
             <span class="drag-picker-copy" aria-hidden="true">ここをドラッグ</span>
           </div>
+
+          <div class="next-bar" id="nextBar" aria-live="polite" hidden></div>
         </div>
 
       </div>
@@ -85,12 +87,8 @@
 
           <div class="side-next" id="sideNextSection">
             <div class="side-dir">
-              <div class="side-dir-label"><span class="mini inbound"></span>上り　次の1本</div>
-              <ul class="schedule-list" id="nearInboundList"></ul>
-            </div>
-            <div class="side-dir">
-              <div class="side-dir-label"><span class="mini outbound"></span>下り　次の1本</div>
-              <ul class="schedule-list" id="nearOutboundList"></ul>
+              <div class="side-dir-label">次の2本</div>
+              <ul class="schedule-list" id="nearComingList"></ul>
             </div>
           </div>
 
@@ -158,9 +156,9 @@
     </div>
   </aside>
 
-  <script defer src="./src/data.js"></script>
-  <script defer src="./src/geometry.js"></script>
-  <script defer src="./src/schedule.js"></script>
-  <script defer src="./src/app.js"></script>
+  <script defer src="./src/data.js?v=2026052101"></script>
+  <script defer src="./src/geometry.js?v=2026052101"></script>
+  <script defer src="./src/schedule.js?v=2026052101"></script>
+  <script defer src="./src/app.js?v=2026052101"></script>
 </body>
 </html>

@@ -43,8 +43,8 @@
     selectionKind: document.getElementById("selectionKind"),
     selectionName: document.getElementById("selectionName"),
     selectionKm: document.getElementById("selectionKm"),
-    nearInboundList: document.getElementById("nearInboundList"),
-    nearOutboundList: document.getElementById("nearOutboundList"),
+    nearComingList: document.getElementById("nearComingList"),
+    nextBar: document.getElementById("nextBar"),
     sideAllSection: document.getElementById("sideAllSection"),
     sideAllList: document.getElementById("sideAllList"),
     toggleSidePanelAll: document.getElementById("toggleSidePanelAll"),
@@ -482,16 +482,49 @@
     }).join('');
   }
 
+  function renderNextBar(futureEvents) {
+    var bar = elements.nextBar;
+    if (!bar) { return; }
+
+    if (!state.selectedPoint || !futureEvents) {
+      bar.hidden = true;
+      bar.innerHTML = "";
+      return;
+    }
+
+    var items = futureEvents.slice(0, 2);
+    bar.hidden = false;
+
+    if (items.length === 0) {
+      bar.innerHTML = '<span class="nb-empty">この先の通過はありません</span>';
+      return;
+    }
+
+    bar.innerHTML = items.map(function (item, idx) {
+      var delta = Math.max(0, Math.round((item.seconds - state.nowSeconds) / 60));
+      var timeText = schedule.secondsToTimeText(item.seconds, false);
+      var dirClass = item.direction === "inbound" ? "nb-inbound" : "nb-outbound";
+      var dirMark = item.direction === "inbound" ? "▲" : "▼";
+      var primary = idx === 0 ? " primary" : "";
+      return '' +
+        '<span class="nb-item' + primary + ' ' + dirClass + '">' +
+          '<span class="nb-dir">' + dirMark + '</span>' +
+          '<span class="nb-min">' + delta + '分</span>' +
+          '<span class="nb-time">(' + timeText + ')</span>' +
+        '</span>';
+    }).join('');
+  }
+
   function updateSelectionPanel() {
     if (!state.selectedPoint) {
       elements.sidePanel.dataset.empty = "true";
       elements.sidePanel.dataset.sheet = "peek";
-      elements.nearInboundList.innerHTML = renderScheduleItems([], "場所を選ぶと表示されます");
-      elements.nearOutboundList.innerHTML = renderScheduleItems([], "場所を選ぶと表示されます");
+      elements.nearComingList.innerHTML = renderScheduleItems([], "場所を選ぶと表示されます");
       elements.sideAllSection.hidden = true;
       elements.sideAllList.innerHTML = "";
       elements.toggleSidePanelAll.textContent = "全時刻を見る";
       elements.kmAdjuster.hidden = true;
+      renderNextBar(null);
       syncLocationButtons();
       return;
     }
@@ -501,14 +534,6 @@
 
     var futureEvents = events.filter(function (event) {
       return event.seconds >= state.nowSeconds;
-    });
-
-    var futureInbound = futureEvents.filter(function (e) {
-      return e.direction === "inbound";
-    }).sort(function (a, b) { return a.seconds - b.seconds; });
-
-    var futureOutbound = futureEvents.filter(function (e) {
-      return e.direction === "outbound";
     }).sort(function (a, b) { return a.seconds - b.seconds; });
 
     var allEvents = events.slice().sort(function (a, b) { return a.seconds - b.seconds; });
@@ -518,8 +543,8 @@
     elements.selectionName.textContent = metadata.name;
     elements.selectionKm.textContent = state.selectedPoint.km.toFixed(2) + " km";
 
-    elements.nearInboundList.innerHTML = renderScheduleItems(futureInbound.slice(0, 1), "本日の上りはありません");
-    elements.nearOutboundList.innerHTML = renderScheduleItems(futureOutbound.slice(0, 1), "本日の下りはありません");
+    elements.nearComingList.innerHTML = renderScheduleItems(futureEvents.slice(0, 2), "本日この先の通過はありません");
+    renderNextBar(futureEvents);
 
     elements.toggleSidePanelAll.textContent = state.showSidePanelAll ? "次の1本に戻す" : "全時刻を見る";
 
